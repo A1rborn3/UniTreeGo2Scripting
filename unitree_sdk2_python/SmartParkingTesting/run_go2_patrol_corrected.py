@@ -12,6 +12,12 @@ Key differences from the original:
   * The kill switch is polled every control tick (~20 Hz) instead of only
     between waypoints, so a spacebar press stops the robot within ~50ms.
   * Class structure fixed (__init__ / stand_down are proper methods now).
+  * Obstacle avoidance is enabled the same way as Go2KeyboardController.py:
+    UseRemoteCommandFromApi(True) + SwitchSet(True) after standing, and all
+    movement during navigation goes through ObstaclesAvoidClient.Move()
+    instead of SportClient.Move() while avoidance is active, so the robot's
+    onboard avoidance can override/shape commanded velocities around
+    obstacles it detects. Cleanly disabled again in stand_down().
 
 Usage:
     python run_go2_patrol_corrected.py                 # live (requires unitree_sdk2 & robot)
@@ -39,10 +45,8 @@ try:
     from unitree_sdk2py.go2.sport.sport_client import SportClient
     from unitree_sdk2py.go2.obstacles_avoid.obstacles_avoid_client import ObstaclesAvoidClient
     # SportModeState carries the robot's estimated position/yaw (odometry).
-    # Exact import path can vary by SDK version — check your installed package
-    # (e.g. unitree_sdk2py.idl.default or unitree_go.msg.dds_ for state msgs).
+    # Go2 uses the unitree_go idl (G1/H1-2 use unitree_hg instead).
     from unitree_sdk2py.idl.unitree_go.msg.dds_ import SportModeState_
-    from unitree_sdk2py.go2.sport.sport_client import SportClient
     SDK_AVAILABLE = True
 except ImportError:
     SDK_AVAILABLE = False
@@ -101,13 +105,7 @@ class Go2PatrolController:
 
         self.obstacle_client = ObstaclesAvoidClient()
         self.obstacle_client.Init()
-        self.obstacle_avoidance_enabled = True
-        # Actually enable it on the robot, not just set a local flag:
-        try:
-            self.obstacle_client.SwitchSet(True)
-        except AttributeError:
-            print("Warning: obstacle_client has no SwitchSet() in this SDK version; "
-                  "check your SDK docs for the correct enable call.")
+        self.obstacle_avoidance_enabled = False  # actually enabled later, once standing
 
         # Robot pose, updated by the state subscriber callback.
         self.pose_x = 0.0
@@ -136,13 +134,39 @@ class Go2PatrolController:
         self.pose_yaw = msg.imu_state.rpy[2]
         self._pose_lock_ready = True
 
+    def enable_obstacle_avoidance(self):
+        self.obstacle_client.UseRemoteCommandFromApi(True)
+        self.obstacle_client.SwitchSet(True)
+        self.obstacle_avoidance_enabled = True
+        time.sleep(0.5)
+
+    def disable_obstacle_avoidance(self):
+        self.obstacle_client.SwitchSet(False)
+        self.obstacle_client.UseRemoteCommandFromApi(False)
+        self.obstacle_avoidance_enabled = False
+
+    def _move(self, vx, vy, vyaw):
+        """Route through the obstacle-avoidance client when enabled, same as
+        the keyboard controller: ObstaclesAvoidClient.Move() lets the robot's
+        onboard avoidance modify/block the commanded velocity around obstacles."""
+        if self.obstacle_avoidance_enabled:
+            self.obstacle_client.Move(vx, vy, vyaw)
+        else:
+            self.sport_client.Move(vx=vx, vy=vy, vyaw=vyaw)
+
     def stand_up(self):
+        self.sport_client.StopMove()
+        time.sleep(0.2)
         self.sport_client.StandUp()
-        time.sleep(2.0)
         self.is_standing = True
+        time.sleep(2.5)
+        self.sport_client.ClassicWalk(True)
+        self.enable_obstacle_avoidance()
 
     def stand_down(self):
         self.sport_client.StopMove()
+        self.disable_obstacle_avoidance()
+        self.sport_client.Euler(0.0, 0.0, 0.0)
         time.sleep(0.2)
         self.sport_client.StandDown()
         self.is_standing = False
@@ -184,7 +208,7 @@ class Go2PatrolController:
                 # Slow down as we approach, and while still correcting heading.
                 vx = max_speed * min(1.0, dist / 0.5)
 
-            self.sport_client.Move(vx=vx, vy=0.0, vyaw=vyaw)
+            self._move(vx, 0.0, vyaw)
             time.sleep(period)
 
         self.sport_client.StopMove()
@@ -202,7 +226,7 @@ class Go2PatrolController:
                 if abs(math.degrees(err)) <= YAW_TOLERANCE_DEG:
                     break
                 vyaw = max(-MAX_YAW_RATE, min(MAX_YAW_RATE, HEADING_KP * err))
-                self.sport_client.Move(vx=0.0, vy=0.0, vyaw=vyaw)
+                self._move(0.0, 0.0, vyaw)
                 time.sleep(period)
             self.sport_client.StopMove()
 
