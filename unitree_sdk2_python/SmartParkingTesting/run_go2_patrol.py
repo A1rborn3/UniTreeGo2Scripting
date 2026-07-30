@@ -68,7 +68,7 @@ def run_patrol_simulation(waypoints_data, speed_factor=1.0):
     print(f"Loaded {len(waypoints)} waypoints across {meta.get('total_patrol_distance_m', 0)} meters.")
     print("Starting simulated route execution...\n")
 
-    curr_x, curr_y = 0.0, 0.0
+    curr_x, curr_y = 0.0, 0.0 
 
     for wp in waypoints:
         target_x = wp['x']
