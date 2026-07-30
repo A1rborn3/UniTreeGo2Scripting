@@ -1,0 +1,145 @@
+{
+    "robot": {
+        "model": "Unitree Go2 / G02",
+        "frame_id": "map",
+        "default_speed_m_s": 0.8,
+        "gait_type": "trot"
+    },
+    "metadata": {
+        "map_bounds": {
+            "min_x": -11.685620577714584,
+            "max_x": 12.118014406490401,
+            "min_y": -11.759000270655836,
+            "max_y": 11.938698558474044
+        },
+        "resolution": 70.0,
+        "total_waypoints": 6,
+        "total_patrol_distance_m": 19.61
+    },
+    "waypoints": [
+        {
+            "seq": 0,
+            "id": "node_0",
+            "type": "entrance_exit",
+            "x": -2.9142,
+            "y": 6.5958,
+            "z": 0.0,
+            "yaw_rad": -1.5288,
+            "yaw_deg": -87.59,
+            "target_speed_m_s": 0.8,
+            "tolerance_m": 0.3,
+            "wait_time_sec": 2.0,
+            "gps": {
+                "latitude": 37.7749593,
+                "longitude": -122.4194331
+            }
+        },
+        {
+            "seq": 1,
+            "id": "node_1",
+            "type": "waypoint",
+            "x": -2.7856,
+            "y": 3.5387,
+            "z": 0.0,
+            "yaw_rad": -0.7641,
+            "yaw_deg": -43.78,
+            "target_speed_m_s": 0.8,
+            "tolerance_m": 0.3,
+            "wait_time_sec": 0.5,
+            "gps": {
+                "latitude": 37.7749318,
+                "longitude": -122.4194317
+            }
+        },
+        {
+            "seq": 2,
+            "id": "node_2",
+            "type": "waypoint",
+            "x": 3.7144,
+            "y": -2.6899,
+            "z": 0.0,
+            "yaw_rad": -1.5927,
+            "yaw_deg": -91.26,
+            "target_speed_m_s": 0.8,
+            "tolerance_m": 0.3,
+            "wait_time_sec": 0.5,
+            "gps": {
+                "latitude": 37.7748758,
+                "longitude": -122.4193578
+            }
+        },
+        {
+            "seq": 3,
+            "id": "node_3",
+            "type": "waypoint",
+            "x": 3.643,
+            "y": -5.947,
+            "z": 0.0,
+            "yaw_rad": -2.6779,
+            "yaw_deg": -153.43,
+            "target_speed_m_s": 0.8,
+            "tolerance_m": 0.3,
+            "wait_time_sec": 0.5,
+            "gps": {
+                "latitude": 37.7748466,
+                "longitude": -122.4193586
+            }
+        },
+        {
+            "seq": 4,
+            "id": "node_4",
+            "type": "waypoint",
+            "x": 0.5287,
+            "y": -7.5042,
+            "z": 0.0,
+            "yaw_rad": -2.3063,
+            "yaw_deg": -132.14,
+            "target_speed_m_s": 0.8,
+            "tolerance_m": 0.3,
+            "wait_time_sec": 0.5,
+            "gps": {
+                "latitude": 37.7748326,
+                "longitude": -122.419394
+            }
+        },
+        {
+            "seq": 5,
+            "id": "node_5",
+            "type": "entrance_exit",
+            "x": -0.0142,
+            "y": -8.1042,
+            "z": 0.0,
+            "yaw_rad": 1.7656,
+            "yaw_deg": 101.16,
+            "target_speed_m_s": 0.8,
+            "tolerance_m": 0.3,
+            "wait_time_sec": 2.0,
+            "gps": {
+                "latitude": 37.7748272,
+                "longitude": -122.4194002
+            }
+        }
+    ],
+    "edges": [
+        {
+            "id": "edge_0",
+            "from_id": "node_0",
+            "to_id": "node_1"
+        },
+        {
+            "id": "edge_1",
+            "from_id": "node_1",
+            "to_id": "node_2"
+        },
+        {
+            "id": "edge_2",
+            "from_id": "node_2",
+            "to_id": "node_3"
+        },
+        {
+            "id": "edge_3",
+            "from_id": "node_4",
+            "to_id": "node_5"
+        }
+    ]
+}
