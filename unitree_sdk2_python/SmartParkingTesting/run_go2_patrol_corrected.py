@@ -2,8 +2,7 @@
 """
 Unitree Go2 (G02) Autonomous Waypoint Patrol Execution Script — corrected live navigation
 
-Key differences from the original:
-  * Live mode now uses real robot pose feedback (position + yaw) to compute
+  * Uses real robot pose feedback (position + yaw) to compute
     distance/bearing error to each waypoint, instead of "drive forward for 2s".
   * Proportional heading control (vyaw) turns the robot toward the target
     before/while driving forward, and target_yaw_deg is honored on arrival.
@@ -32,8 +31,14 @@ import json
 import math
 import argparse
 import select
-import termios
-import tty
+
+WINDOWS = False
+try:
+    import termios
+    import tty
+except ImportError:
+    import msvcrt
+    WINDOWS = True
 
 SDK_AVAILABLE = False
 try:
@@ -71,19 +76,29 @@ def load_waypoints(json_path):
 
 def _check_for_space_kill():
     """Non-blocking single-key check. Returns True if space was pressed."""
-    fd = sys.stdin.fileno()
-    old_settings = termios.tcgetattr(fd)
-    try:
-        tty.setcbreak(fd)
-        if select.select([sys.stdin], [], [], 0)[0]:
-            key = sys.stdin.read(1)
-            if key == " ":
-                return True
-    except (termios.error, OSError, EOFError):
+    if WINDOWS:
+        if msvcrt.kbhit():
+            try:
+                key = msvcrt.getch()
+                if key == b" ":
+                    return True
+            except Exception:
+                pass
         return False
-    finally:
-        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-    return False
+    else:
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            tty.setcbreak(fd)
+            if select.select([sys.stdin], [], [], 0)[0]:
+                key = sys.stdin.read(1)
+                if key == " ":
+                    return True
+        except (termios.error, OSError, EOFError):
+            return False
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        return False
 
 
 def angle_diff_rad(target_rad, current_rad):
@@ -149,7 +164,10 @@ class Go2PatrolController:
         """Route through the obstacle-avoidance client when enabled, same as
         the keyboard controller: ObstaclesAvoidClient.Move() lets the robot's
         onboard avoidance modify/block the commanded velocity around obstacles."""
-        if self.obstacle_avoidance_enabled:
+        # Bypass obstacle avoidance for pure in-place rotation to prevent command filtering
+        if vx == 0.0 and vy == 0.0:
+            self.sport_client.Move(vx=0.0, vy=0.0, vyaw=vyaw)
+        elif self.obstacle_avoidance_enabled:
             self.obstacle_client.Move(vx, vy, vyaw)
         else:
             self.sport_client.Move(vx=vx, vy=vy, vyaw=vyaw)
@@ -211,7 +229,8 @@ class Go2PatrolController:
             self._move(vx, 0.0, vyaw)
             time.sleep(period)
 
-        self.sport_client.StopMove()
+            # Command zero velocity instead of StopMove to keep the gait active for turning
+        self._move(0.0, 0.0, 0.0)
 
         # Rotate to the requested final yaw, if the waypoint specifies one.
         if target_yaw_deg is not None:
