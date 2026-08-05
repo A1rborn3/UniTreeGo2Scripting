@@ -1,0 +1,138 @@
+robot:
+  model: Unitree Go2 / G02
+  frame_id: map
+  default_speed_m_s: 0.8
+  gait_type: trot
+metadata:
+  map_bounds:
+    min_x: !!python/object/apply:numpy._core.multiarray.scalar
+    - &id001 !!python/object/apply:numpy.dtype
+      args:
+      - f8
+      - false
+      - true
+      state: !!python/tuple
+      - 3
+      - <
+      - null
+      - null
+      - null
+      - -1
+      - -1
+      - 0
+    - !!binary |
+      rqPJReVeJ8A=
+    max_x: !!python/object/apply:numpy._core.multiarray.scalar
+    - *id001
+    - !!binary |
+      noZP3vM8KEA=
+    min_y: !!python/object/apply:numpy._core.multiarray.scalar
+    - *id001
+    - !!binary |
+      3gYU5DKEJ8A=
+    max_y: !!python/object/apply:numpy._core.multiarray.scalar
+    - *id001
+    - !!binary |
+      CFnUyLfgJ0A=
+  resolution: 70.0
+  total_waypoints: 5
+  total_patrol_distance_m: 6.34
+waypoints:
+- seq: 0
+  id: manual_node_0
+  type: entrance_exit
+  x: !!python/object/apply:numpy._core.multiarray.scalar
+  - *id001
+  - !!binary |
+    pHA9Ctej7j8=
+  y: !!python/object/apply:numpy._core.multiarray.scalar
+  - *id001
+  - !!binary |
+    ETY8vVKW7T8=
+  z: 0.0
+  yaw_rad: 0.0483
+  yaw_deg: 2.77
+  target_speed_m_s: 0.8
+  tolerance_m: 0.3
+  wait_time_sec: 2.0
+- seq: 1
+  id: manual_node_1
+  type: turn
+  x: !!python/object/apply:numpy._core.multiarray.scalar
+  - *id001
+  - !!binary |
+    aW/whcnUBUA=
+  y: !!python/object/apply:numpy._core.multiarray.scalar
+  - *id001
+  - !!binary |
+    fGEyVTAq8D8=
+  z: 0.0
+  yaw_rad: 1.6773
+  yaw_deg: 96.1
+  target_speed_m_s: 0.8
+  tolerance_m: 0.3
+  wait_time_sec: 0.5
+- seq: 2
+  id: manual_node_2
+  type: turn
+  x: !!python/object/apply:numpy._core.multiarray.scalar
+  - *id001
+  - !!binary |
+    0NVW7C87BEA=
+  y: !!python/object/apply:numpy._core.multiarray.scalar
+  - *id001
+  - !!binary |
+    BOeMKO0NB0A=
+  z: 0.0
+  yaw_rad: -3.0739
+  yaw_deg: -176.12
+  target_speed_m_s: 0.8
+  tolerance_m: 0.3
+  wait_time_sec: 0.5
+- seq: 3
+  id: manual_node_3
+  type: turn
+  x: !!python/object/apply:numpy._core.multiarray.scalar
+  - *id001
+  - !!binary |
+    JJf/kH776j8=
+  y: !!python/object/apply:numpy._core.multiarray.scalar
+  - *id001
+  - !!binary |
+    pHA9CtcjBkA=
+  z: 0.0
+  yaw_rad: -1.4554
+  yaw_deg: -83.39
+  target_speed_m_s: 0.8
+  tolerance_m: 0.3
+  wait_time_sec: 0.5
+- seq: 4
+  id: manual_node_4
+  type: waypoint
+  x: !!python/object/apply:numpy._core.multiarray.scalar
+  - *id001
+  - !!binary |
+    pHA9Ctej7j8=
+  y: !!python/object/apply:numpy._core.multiarray.scalar
+  - *id001
+  - !!binary |
+    bjSAt0CC/D8=
+  z: 0.0
+  yaw_rad: -1.5708
+  yaw_deg: -90.0
+  target_speed_m_s: 0.8
+  tolerance_m: 0.3
+  wait_time_sec: 0.5
+edges:
+- id: manual_edge_0
+  from_id: manual_node_0
+  to_id: manual_node_1
+- id: manual_edge_1
+  from_id: manual_node_1
+  to_id: manual_node_2
+- id: manual_edge_2
+  from_id: manual_node_2
+  to_id: manual_node_3
+- id: manual_edge_3
+  from_id: manual_node_3
+  to_id: manual_node_4
