@@ -155,7 +155,17 @@ class Go2PatrolController:
             self.obstacle_client.Move(vx, vy, vyaw)
         else:
             self.sport_client.Move(vx=vx, vy=vy, vyaw=vyaw)
-            
+
+    def _stop(self):
+        """Zero velocity, routed through whichever client currently has
+        authority over locomotion (mirrors _move()). sport_client.StopMove()
+        alone does nothing while ObstaclesAvoidClient is the active command
+        source, which is why the robot would previously sail through
+        waypoints instead of stopping."""
+        if self.obstacle_avoidance_enabled:
+            self.obstacle_client.Move(0.0, 0.0, 0.0)
+        else:
+            self.sport_client.StopMove()
 
     def stand_up(self):
         self.sport_client.StopMove()
@@ -167,8 +177,8 @@ class Go2PatrolController:
         self.enable_obstacle_avoidance()
 
     def stand_down(self):
-        self.sport_client.StopMove()
-        #self.disable_obstacle_avoidance()
+        self._stop()
+        self.disable_obstacle_avoidance()
         #self.sport_client.Euler(0.0, 0.0, 0.0)
         time.sleep(0.2)
         self.sport_client.StandDown()
@@ -187,7 +197,7 @@ class Go2PatrolController:
         while True:
             if _check_for_space_kill():
                 print("\nKill switch pressed. Stopping.")
-                self.sport_client.StopMove()
+                self._stop()
                 self.stand_down()
                 return False
 
@@ -215,7 +225,7 @@ class Go2PatrolController:
             print(f"move command sent {vx}")
             time.sleep(period)
 
-        self.sport_client.StopMove()
+        self._stop()
 
         # Rotate to the requested final yaw, if the waypoint specifies one.
         if target_yaw_deg is not None:
@@ -223,7 +233,7 @@ class Go2PatrolController:
             while True:
                 if _check_for_space_kill():
                     print("\nKill switch pressed. Stopping.")
-                    self.sport_client.StopMove()
+                    self._stop()
                     self.stand_down()
                     return False
                 err = angle_diff_rad(target_yaw_rad, self.pose_yaw)
@@ -232,7 +242,7 @@ class Go2PatrolController:
                 vyaw = max(-MAX_YAW_RATE, min(MAX_YAW_RATE, HEADING_KP * err))
                 self._move(0.0, 0.0, vyaw)
                 time.sleep(period)
-            self.sport_client.StopMove()
+            self._stop()
 
         return True
 
@@ -258,7 +268,7 @@ class Go2PatrolController:
                     while time.time() - t0 < wait_time:
                         if _check_for_space_kill():
                             print("\nKill switch pressed. Stopping.")
-                            self.sport_client.StopMove()
+                            self._stop()
                             self.stand_down()
                             return
                         time.sleep(1.0 / CONTROL_HZ)

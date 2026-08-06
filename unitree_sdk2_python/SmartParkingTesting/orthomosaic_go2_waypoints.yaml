@@ -5,7 +5,7 @@ robot:
   gait_type: trot
 metadata:
   map_bounds:
-    min_x: !!python/object/apply:numpy._core.multiarray.scalar
+    min_x: !!python/object/apply:numpy.core.multiarray.scalar
     - &id001 !!python/object/apply:numpy.dtype
       args:
       - f8
@@ -21,105 +21,105 @@ metadata:
       - -1
       - 0
     - !!binary |
-      rqPJReVeJ8A=
-    max_x: !!python/object/apply:numpy._core.multiarray.scalar
+      gwIR/CJfJ8A=
+    max_x: !!python/object/apply:numpy.core.multiarray.scalar
     - *id001
     - !!binary |
-      noZP3vM8KEA=
-    min_y: !!python/object/apply:numpy._core.multiarray.scalar
+      2jNt+g08KEA=
+    min_y: !!python/object/apply:numpy.core.multiarray.scalar
     - *id001
     - !!binary |
-      3gYU5DKEJ8A=
-    max_y: !!python/object/apply:numpy._core.multiarray.scalar
+      foWGoaiBJ8A=
+    max_y: !!python/object/apply:numpy.core.multiarray.scalar
     - *id001
     - !!binary |
-      CFnUyLfgJ0A=
+      eUPNflrhJ0A=
   resolution: 70.0
   total_waypoints: 5
-  total_patrol_distance_m: 6.34
+  total_patrol_distance_m: 6.2
 waypoints:
 - seq: 0
   id: manual_node_0
   type: entrance_exit
-  x: !!python/object/apply:numpy._core.multiarray.scalar
+  x: !!python/object/apply:numpy.core.multiarray.scalar
   - *id001
   - !!binary |
-    pHA9Ctej7j8=
-  y: !!python/object/apply:numpy._core.multiarray.scalar
+    0LNZ9bna5j8=
+  y: !!python/object/apply:numpy.core.multiarray.scalar
   - *id001
   - !!binary |
-    ETY8vVKW7T8=
+    2V92Tx4W4L8=
   z: 0.0
-  yaw_rad: 0.0483
-  yaw_deg: 2.77
+  yaw_rad: 3.1158
+  yaw_deg: 178.52
   target_speed_m_s: 0.8
   tolerance_m: 0.3
   wait_time_sec: 2.0
 - seq: 1
   id: manual_node_1
   type: turn
-  x: !!python/object/apply:numpy._core.multiarray.scalar
+  x: !!python/object/apply:numpy.core.multiarray.scalar
   - *id001
   - !!binary |
-    aW/whcnUBUA=
-  y: !!python/object/apply:numpy._core.multiarray.scalar
+    kxgEVg4t7r8=
+  y: !!python/object/apply:numpy.core.multiarray.scalar
   - *id001
   - !!binary |
-    fGEyVTAq8D8=
+    rIvbaABv3b8=
   z: 0.0
-  yaw_rad: 1.6773
-  yaw_deg: 96.1
+  yaw_rad: 1.5022
+  yaw_deg: 86.07
   target_speed_m_s: 0.8
   tolerance_m: 0.3
   wait_time_sec: 0.5
 - seq: 2
   id: manual_node_2
   type: turn
-  x: !!python/object/apply:numpy._core.multiarray.scalar
+  x: !!python/object/apply:numpy.core.multiarray.scalar
   - *id001
   - !!binary |
-    0NVW7C87BEA=
-  y: !!python/object/apply:numpy._core.multiarray.scalar
+    yJi7lpAP6r8=
+  y: !!python/object/apply:numpy.core.multiarray.scalar
   - *id001
   - !!binary |
-    BOeMKO0NB0A=
+    oImw4emV9j8=
   z: 0.0
-  yaw_rad: -3.0739
-  yaw_deg: -176.12
+  yaw_rad: -0.0266
+  yaw_deg: -1.52
   target_speed_m_s: 0.8
   tolerance_m: 0.3
   wait_time_sec: 0.5
 - seq: 3
   id: manual_node_3
   type: turn
-  x: !!python/object/apply:numpy._core.multiarray.scalar
+  x: !!python/object/apply:numpy.core.multiarray.scalar
   - *id001
   - !!binary |
-    JJf/kH776j8=
-  y: !!python/object/apply:numpy._core.multiarray.scalar
+    uECC4seY6T8=
+  y: !!python/object/apply:numpy.core.multiarray.scalar
   - *id001
   - !!binary |
-    pHA9CtcjBkA=
+    LpCg+DHm9T8=
   z: 0.0
-  yaw_rad: -1.4554
-  yaw_deg: -83.39
+  yaw_rad: -2.3178
+  yaw_deg: -132.8
   target_speed_m_s: 0.8
   tolerance_m: 0.3
   wait_time_sec: 0.5
 - seq: 4
   id: manual_node_4
   type: waypoint
-  x: !!python/object/apply:numpy._core.multiarray.scalar
+  x: !!python/object/apply:numpy.core.multiarray.scalar
   - *id001
   - !!binary |
-    pHA9Ctej7j8=
-  y: !!python/object/apply:numpy._core.multiarray.scalar
+    J6CJsOHptT8=
+  y: !!python/object/apply:numpy.core.multiarray.scalar
   - *id001
   - !!binary |
-    bjSAt0CC/D8=
+    W9O84xQd4z8=
   z: 0.0
-  yaw_rad: -1.5708
-  yaw_deg: -90.0
+  yaw_rad: -1.0516
+  yaw_deg: -60.25
   target_speed_m_s: 0.8
   tolerance_m: 0.3
   wait_time_sec: 0.5
