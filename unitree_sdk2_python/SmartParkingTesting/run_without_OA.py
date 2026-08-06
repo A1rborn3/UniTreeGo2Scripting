@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
 """
-Unitree Go2 (G02) Autonomous Waypoint Patrol Execution Script — corrected live navigation
+Unitree Go2 (G02) Autonomous Waypoint Patrol Execution Script
 
-  * Uses real robot pose feedback (position + yaw) to compute
-    distance/bearing error to each waypoint, instead of "drive forward for 2s".
-  * Proportional heading control (vyaw) turns the robot toward the target
-    before/while driving forward, and target_yaw_deg is honored on arrival.
+Loads the exported waypoints JSON file and commands a Unitree Go2 robot dog to
+navigate sequentially through all patrol points using `unitree_sdk2` (SportClient).
+
+Navigation is closed-loop, driven by live pose feedback (position + yaw) from
+the robot's SportModeState:
+  * Proportional heading control (vyaw) turns the robot toward each target
+    before/while driving forward, and the waypoint's yaw_deg is honored on
+    arrival.
   * "Arrived" is a real distance check against the waypoint (with tolerance),
     not a fixed timer.
-  * The kill switch is polled every control tick (~20 Hz) instead of only
-    between waypoints, so a spacebar press stops the robot within ~50ms.
-  * Class structure fixed (__init__ / stand_down are proper methods now).
+  * The kill switch is polled every control tick (~20 Hz), so a spacebar
+    press stops the robot within ~50ms.
   * Obstacle avoidance is enabled the same way as Go2KeyboardController.py:
     UseRemoteCommandFromApi(True) + SwitchSet(True) after standing, and all
     movement during navigation goes through ObstaclesAvoidClient.Move()
@@ -19,9 +22,9 @@ Unitree Go2 (G02) Autonomous Waypoint Patrol Execution Script — corrected live
     obstacles it detects. Cleanly disabled again in stand_down().
 
 Usage:
-    python run_go2_patrol_corrected.py                 # live (requires unitree_sdk2 & robot)
-    python run_go2_patrol_corrected.py --dry-run        # simulation mode
-    python run_go2_patrol_corrected.py --waypoints path.json --net eth0
+    python run_go2_patrol.py                     # live (requires unitree_sdk2 & robot)
+    python run_go2_patrol.py --dry-run            # simulation mode (offline / mock test)
+    python run_go2_patrol.py --waypoints path.json --net eth0
 """
 
 import sys
@@ -31,14 +34,8 @@ import json
 import math
 import argparse
 import select
-
-WINDOWS = False
-try:
-    import termios
-    import tty
-except ImportError:
-    import msvcrt
-    WINDOWS = True
+import termios
+import tty
 
 SDK_AVAILABLE = False
 try:
@@ -76,29 +73,19 @@ def load_waypoints(json_path):
 
 def _check_for_space_kill():
     """Non-blocking single-key check. Returns True if space was pressed."""
-    if WINDOWS:
-        if msvcrt.kbhit():
-            try:
-                key = msvcrt.getch()
-                if key == b" ":
-                    return True
-            except Exception:
-                pass
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    try:
+        tty.setcbreak(fd)
+        if select.select([sys.stdin], [], [], 0)[0]:
+            key = sys.stdin.read(1)
+            if key == " ":
+                return True
+    except (termios.error, OSError, EOFError):
         return False
-    else:
-        fd = sys.stdin.fileno()
-        old_settings = termios.tcgetattr(fd)
-        try:
-            tty.setcbreak(fd)
-            if select.select([sys.stdin], [], [], 0)[0]:
-                key = sys.stdin.read(1)
-                if key == " ":
-                    return True
-        except (termios.error, OSError, EOFError):
-            return False
-        finally:
-            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-        return False
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+    return False
 
 
 def angle_diff_rad(target_rad, current_rad):
@@ -164,13 +151,21 @@ class Go2PatrolController:
         """Route through the obstacle-avoidance client when enabled, same as
         the keyboard controller: ObstaclesAvoidClient.Move() lets the robot's
         onboard avoidance modify/block the commanded velocity around obstacles."""
-        # Bypass obstacle avoidance for pure in-place rotation to prevent command filtering
-        if vx == 0.0 and vy == 0.0:
-            self.sport_client.Move(vx=0.0, vy=0.0, vyaw=vyaw)
-        elif self.obstacle_avoidance_enabled:
+        if self.obstacle_avoidance_enabled:
             self.obstacle_client.Move(vx, vy, vyaw)
         else:
             self.sport_client.Move(vx=vx, vy=vy, vyaw=vyaw)
+
+    def _stop(self):
+        """Zero velocity, routed through whichever client currently has
+        authority over locomotion (mirrors _move()). sport_client.StopMove()
+        alone does nothing while ObstaclesAvoidClient is the active command
+        source, which is why the robot would previously sail through
+        waypoints instead of stopping."""
+        if self.obstacle_avoidance_enabled:
+            self.obstacle_client.Move(0.0, 0.0, 0.0)
+        else:
+            self.sport_client.StopMove()
 
     def stand_up(self):
         self.sport_client.StopMove()
@@ -182,9 +177,9 @@ class Go2PatrolController:
         self.enable_obstacle_avoidance()
 
     def stand_down(self):
-        self.sport_client.StopMove()
+        self._stop()
         self.disable_obstacle_avoidance()
-        self.sport_client.Euler(0.0, 0.0, 0.0)
+        #self.sport_client.Euler(0.0, 0.0, 0.0)
         time.sleep(0.2)
         self.sport_client.StandDown()
         self.is_standing = False
@@ -202,7 +197,7 @@ class Go2PatrolController:
         while True:
             if _check_for_space_kill():
                 print("\nKill switch pressed. Stopping.")
-                self.sport_client.StopMove()
+                self._stop()
                 self.stand_down()
                 return False
 
@@ -227,10 +222,10 @@ class Go2PatrolController:
                 vx = max_speed * min(1.0, dist / 0.5)
 
             self._move(vx, 0.0, vyaw)
+            print(f"move command sent {vx}")
             time.sleep(period)
 
-            # Command zero velocity instead of StopMove to keep the gait active for turning
-        self._move(0.0, 0.0, 0.0)
+        self._stop()
 
         # Rotate to the requested final yaw, if the waypoint specifies one.
         if target_yaw_deg is not None:
@@ -238,7 +233,7 @@ class Go2PatrolController:
             while True:
                 if _check_for_space_kill():
                     print("\nKill switch pressed. Stopping.")
-                    self.sport_client.StopMove()
+                    self._stop()
                     self.stand_down()
                     return False
                 err = angle_diff_rad(target_yaw_rad, self.pose_yaw)
@@ -247,38 +242,48 @@ class Go2PatrolController:
                 vyaw = max(-MAX_YAW_RATE, min(MAX_YAW_RATE, HEADING_KP * err))
                 self._move(0.0, 0.0, vyaw)
                 time.sleep(period)
-            self.sport_client.StopMove()
+            self._stop()
 
         return True
 
     def run_patrol(self, waypoints_data):
-        waypoints = waypoints_data.get("waypoints", [])
-        print(f"Executing live patrol sequence for {len(waypoints)} waypoints...")
+        try:
+            waypoints = waypoints_data.get("waypoints", [])
+            print(f"Executing live patrol sequence for {len(waypoints)} waypoints...")
 
-        if not self.is_standing:
-            print("Standing up...")
-            self.stand_up()
+            if not self.is_standing:
+                print("Standing up...")
+                self.stand_up()
 
-        for wp in waypoints:
-            print(f"Navigating to Node {wp['id']} "
-                  f"({wp['x']:.2f}, {wp['y']:.2f}, yaw={wp.get('yaw_deg', 0):.1f}°)...")
-            ok = self.navigate_to_waypoint(wp)
-            if not ok:
-                return  # kill switch was hit
+            for wp in waypoints:
+                print(f"Navigating to Node {wp['id']} "
+                    f"({wp['x']:.2f}, {wp['y']:.2f}, yaw={wp.get('yaw_deg', 0):.1f}°)...")
+                ok = self.navigate_to_waypoint(wp)
+                if not ok:
+                    return  # kill switch was hit
 
-            wait_time = wp.get("wait_time_sec", 0.5)
-            if wait_time > 0:
-                t0 = time.time()
-                while time.time() - t0 < wait_time:
-                    if _check_for_space_kill():
-                        print("\nKill switch pressed. Stopping.")
-                        self.sport_client.StopMove()
-                        self.stand_down()
-                        return
-                    time.sleep(1.0 / CONTROL_HZ)
+                wait_time = wp.get("wait_time_sec", 0.5)
+                if wait_time > 0:
+                    t0 = time.time()
+                    while time.time() - t0 < wait_time:
+                        if _check_for_space_kill():
+                            print("\nKill switch pressed. Stopping.")
+                            self._stop()
+                            self.stand_down()
+                            return
+                        time.sleep(1.0 / CONTROL_HZ)
+            print("Patrol completed. Returning to idle pose...")
+            self.stand_down()
+        finally:
+            try:
+                print("Shutting down safely...")
+                if self.is_standing:
+                    self.stand_down()
+            except Exception as e:
+                # If the robot disconnects during shutdown, we just print it and exit cleanly
+                print(f"\nNote: Shutdown command interrupted ({e}). Robot may need manual sit")
 
-        print("Patrol completed. Returning to idle pose...")
-        self.stand_down()
+        
 
 
 def run_patrol_simulation(waypoints_data, speed_factor=1.0):
@@ -325,7 +330,7 @@ def run_patrol_simulation(waypoints_data, speed_factor=1.0):
 
 def main():
     parser = argparse.ArgumentParser(description="Unitree Go2 Waypoint Patrol Controller")
-    default_json = os.path.join(os.path.dirname(__file__), "go2_test_square_2x2m.json")
+    default_json = os.path.join(os.path.dirname(__file__), "orthomosaic_go2_waypoints.json")
     parser.add_argument("--waypoints", type=str, default=default_json, help="Path to waypoints JSON file")
     parser.add_argument("--net", type=str, default="eth0", help="Network interface for Unitree SDK 2")
     parser.add_argument("--dry-run", action="store_true", help="Run in simulation mode (offline mock execution)")
@@ -341,6 +346,7 @@ def main():
     else:
         controller = Go2PatrolController(network_interface=args.net)
         controller.run_patrol(data)
+    
 
 
 if __name__ == "__main__":
