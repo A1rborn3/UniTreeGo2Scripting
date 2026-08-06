@@ -155,6 +155,7 @@ class Go2PatrolController:
             self.obstacle_client.Move(vx, vy, vyaw)
         else:
             self.sport_client.Move(vx=vx, vy=vy, vyaw=vyaw)
+            
 
     def stand_up(self):
         self.sport_client.StopMove()
@@ -167,8 +168,8 @@ class Go2PatrolController:
 
     def stand_down(self):
         self.sport_client.StopMove()
-        self.disable_obstacle_avoidance()
-        self.sport_client.Euler(0.0, 0.0, 0.0)
+        #self.disable_obstacle_avoidance()
+        #self.sport_client.Euler(0.0, 0.0, 0.0)
         time.sleep(0.2)
         self.sport_client.StandDown()
         self.is_standing = False
@@ -211,6 +212,7 @@ class Go2PatrolController:
                 vx = max_speed * min(1.0, dist / 0.5)
 
             self._move(vx, 0.0, vyaw)
+            print(f"move command sent {vx}")
             time.sleep(period)
 
         self.sport_client.StopMove()
@@ -235,33 +237,43 @@ class Go2PatrolController:
         return True
 
     def run_patrol(self, waypoints_data):
-        waypoints = waypoints_data.get("waypoints", [])
-        print(f"Executing live patrol sequence for {len(waypoints)} waypoints...")
+        try:
+            waypoints = waypoints_data.get("waypoints", [])
+            print(f"Executing live patrol sequence for {len(waypoints)} waypoints...")
 
-        if not self.is_standing:
-            print("Standing up...")
-            self.stand_up()
+            if not self.is_standing:
+                print("Standing up...")
+                self.stand_up()
 
-        for wp in waypoints:
-            print(f"Navigating to Node {wp['id']} "
-                  f"({wp['x']:.2f}, {wp['y']:.2f}, yaw={wp.get('yaw_deg', 0):.1f}°)...")
-            ok = self.navigate_to_waypoint(wp)
-            if not ok:
-                return  # kill switch was hit
+            for wp in waypoints:
+                print(f"Navigating to Node {wp['id']} "
+                    f"({wp['x']:.2f}, {wp['y']:.2f}, yaw={wp.get('yaw_deg', 0):.1f}°)...")
+                ok = self.navigate_to_waypoint(wp)
+                if not ok:
+                    return  # kill switch was hit
 
-            wait_time = wp.get("wait_time_sec", 0.5)
-            if wait_time > 0:
-                t0 = time.time()
-                while time.time() - t0 < wait_time:
-                    if _check_for_space_kill():
-                        print("\nKill switch pressed. Stopping.")
-                        self.sport_client.StopMove()
-                        self.stand_down()
-                        return
-                    time.sleep(1.0 / CONTROL_HZ)
+                wait_time = wp.get("wait_time_sec", 0.5)
+                if wait_time > 0:
+                    t0 = time.time()
+                    while time.time() - t0 < wait_time:
+                        if _check_for_space_kill():
+                            print("\nKill switch pressed. Stopping.")
+                            self.sport_client.StopMove()
+                            self.stand_down()
+                            return
+                        time.sleep(1.0 / CONTROL_HZ)
+            print("Patrol completed. Returning to idle pose...")
+            self.stand_down()
+        finally:
+            try:
+                print("Shutting down safely...")
+                if self.is_standing:
+                    self.stand_down()
+            except Exception as e:
+                # If the robot disconnects during shutdown, we just print it and exit cleanly
+                print(f"\nNote: Shutdown command interrupted ({e}). Robot may need manual sit")
 
-        print("Patrol completed. Returning to idle pose...")
-        self.stand_down()
+        
 
 
 def run_patrol_simulation(waypoints_data, speed_factor=1.0):
@@ -324,6 +336,7 @@ def main():
     else:
         controller = Go2PatrolController(network_interface=args.net)
         controller.run_patrol(data)
+    
 
 
 if __name__ == "__main__":
