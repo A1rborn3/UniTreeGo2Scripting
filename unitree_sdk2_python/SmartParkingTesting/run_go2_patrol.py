@@ -177,7 +177,17 @@ class Go2PatrolController:
         self.obstacle_client.Init()
         self.obstacle_avoidance_enabled = False  # actually enabled later, once standing
 
-        # Robot pose, updated by the state subscriber callback.
+        # Raw pose feedback from DDS
+        self.raw_pose_x = 0.0
+        self.raw_pose_y = 0.0
+        self.raw_pose_yaw = 0.0
+
+        # Initial origin snapshot for zeroing (Option B: full 2D position + heading transform)
+        self.origin_x = None
+        self.origin_y = None
+        self.origin_yaw = None
+
+        # Transformed pose relative to start origin (0, 0, 0 rad)
         self.pose_x = 0.0
         self.pose_y = 0.0
         self.pose_yaw = 0.0  # radians
@@ -196,12 +206,34 @@ class Go2PatrolController:
             print("Warning: no pose feedback received yet; navigation will be unreliable "
                   "until state messages arrive.")
 
+    def reset_origin(self):
+        """Reset origin snapshot so the next incoming state message defines (0,0) and 0 deg yaw."""
+        self.origin_x = None
+        self.origin_y = None
+        self.origin_yaw = None
+
     def _on_state(self, msg):
-        # Field names depend on SDK version — check SportModeState_ definition.
-        # Typically something like msg.position = [x, y, z], msg.imu_state.rpy = [r,p,y]
-        self.pose_x = msg.position[0]
-        self.pose_y = msg.position[1]
-        self.pose_yaw = msg.imu_state.rpy[2]
+        self.raw_pose_x = msg.position[0]
+        self.raw_pose_y = msg.position[1]
+        self.raw_pose_yaw = msg.imu_state.rpy[2]
+
+        if self.origin_x is None:
+            self.origin_x = self.raw_pose_x
+            self.origin_y = self.raw_pose_y
+            self.origin_yaw = self.raw_pose_yaw
+            print(f"Captured initial zero origin: raw (x={self.origin_x:.3f}, "
+                  f"y={self.origin_y:.3f}, yaw={math.degrees(self.origin_yaw):.1f}°)")
+
+        dx = self.raw_pose_x - self.origin_x
+        dy = self.raw_pose_y - self.origin_y
+
+        # Option B: Full 2D transformation (rotate offset into initial robot heading frame)
+        cos_h = math.cos(-self.origin_yaw)
+        sin_h = math.sin(-self.origin_yaw)
+
+        self.pose_x = dx * cos_h - dy * sin_h
+        self.pose_y = dx * sin_h + dy * cos_h
+        self.pose_yaw = angle_diff_rad(self.raw_pose_yaw, self.origin_yaw)
         self._pose_lock_ready = True
 
     def enable_obstacle_avoidance(self):
