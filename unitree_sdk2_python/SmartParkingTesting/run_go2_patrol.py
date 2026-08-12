@@ -33,9 +33,15 @@ import time
 import json
 import math
 import argparse
-import select
-import termios
-import tty
+
+try:
+    import select
+    import termios
+    import tty
+except ImportError:
+    select = None
+    termios = None
+    tty = None
 
 SDK_AVAILABLE = False
 try:
@@ -68,11 +74,73 @@ def load_waypoints(json_path):
     if not os.path.exists(json_path):
         raise FileNotFoundError(f"Waypoints file not found: {json_path}")
     with open(json_path, "r") as f:
-        return json.load(f)
+        data = json.load(f)
+    return normalize_waypoints(data)
+
+
+def normalize_waypoints(data):
+    """Accept either the legacy waypoint export or the orthomosaic graph JSON."""
+    if not isinstance(data, dict):
+        raise ValueError("Waypoint data must be a JSON object")
+
+    if isinstance(data.get("waypoints"), list) and data["waypoints"]:
+        return data
+
+    nodes = data.get("nodes")
+    if not isinstance(nodes, list) or not nodes:
+        raise ValueError("No valid waypoints/nodes found in the JSON file")
+
+    normalized = {
+        "metadata": data.get("metadata", {}),
+        "edges": data.get("edges", []),
+        "waypoints": [],
+    }
+
+    for idx, node in enumerate(nodes):
+        if not isinstance(node, dict):
+            continue
+
+        x = float(node.get("x", 0.0))
+        y = float(node.get("y", 0.0))
+        yaw_deg = node.get("yaw_deg")
+        if yaw_deg is None:
+            yaw_deg = node.get("yaw")
+        if yaw_deg is None:
+            yaw_deg = 0.0
+
+        yaw_rad = node.get("yaw_rad")
+        if yaw_rad is None:
+            try:
+                yaw_rad = math.radians(float(yaw_deg))
+            except (TypeError, ValueError):
+                yaw_rad = 0.0
+
+        wp = {
+            "seq": idx,
+            "id": node.get("id", f"node_{idx}"),
+            "type": node.get("type", "waypoint"),
+            "x": x,
+            "y": y,
+            "z": node.get("z", 0.0),
+            "yaw_deg": float(yaw_deg),
+            "yaw_rad": float(yaw_rad),
+            "target_speed_m_s": node.get("target_speed_m_s", 0.8),
+            "tolerance_m": node.get("tolerance_m", 0.3),
+            "wait_time_sec": node.get("wait_time_sec", 0.5),
+        }
+        normalized["waypoints"].append(wp)
+
+    if not normalized["waypoints"]:
+        raise ValueError("Waypoint graph contains no usable node entries")
+
+    return normalized
 
 
 def _check_for_space_kill():
     """Non-blocking single-key check. Returns True if space was pressed."""
+    if termios is None or tty is None or select is None:
+        return False
+
     fd = sys.stdin.fileno()
     old_settings = termios.tcgetattr(fd)
     try:
@@ -178,7 +246,7 @@ class Go2PatrolController:
 
     def stand_down(self):
         self._stop()
-        self.disable_obstacle_avoidance()
+        #self.disable_obstacle_avoidance()
         #self.sport_client.Euler(0.0, 0.0, 0.0)
         time.sleep(0.2)
         self.sport_client.StandDown()
@@ -330,7 +398,8 @@ def run_patrol_simulation(waypoints_data, speed_factor=1.0):
 
 def main():
     parser = argparse.ArgumentParser(description="Unitree Go2 Waypoint Patrol Controller")
-    default_json = os.path.join(os.path.dirname(__file__), "orthomosaic_go2_waypoints.json")
+    #default_json = os.path.join(os.path.dirname(__file__), "orthomosaic_go2_waypoints.json")
+    default_json = os.path.join(os.path.dirname(__file__), "orthomosaic_graph.json")
     parser.add_argument("--waypoints", type=str, default=default_json, help="Path to waypoints JSON file")
     parser.add_argument("--net", type=str, default="eth0", help="Network interface for Unitree SDK 2")
     parser.add_argument("--dry-run", action="store_true", help="Run in simulation mode (offline mock execution)")
