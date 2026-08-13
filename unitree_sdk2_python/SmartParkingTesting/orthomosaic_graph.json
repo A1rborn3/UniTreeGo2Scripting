@@ -11,32 +11,32 @@
     "nodes": [
         {
             "id": "manual_node_0",
-            "x": 1.0,
-            "y": -1.0,
+            "x": 0,
+            "y": 0,
             "type": "entrance_exit"
         },
         {
             "id": "manual_node_1",
-            "x": -1.0,
-            "y": -1.0,
+            "x": 2.0,
+            "y": 0,
             "type": "turn"
         },
         {
             "id": "manual_node_2",
-            "x": -1.0,
-            "y": 1.0,
+            "x": 2.0,
+            "y": 2.0,
             "type": "turn"
         },
         {
             "id": "manual_node_3",
-            "x": 1.0,
-            "y": 1.0,
+            "x": 0,
+            "y": 2.0,
             "type": "turn"
         },
         {
             "id": "manual_node_4",
-            "x": 1.0,
-            "y": -1.0,
+            "x": 0,
+            "y": 0,
             "type": "waypoint"
         }
     ],
