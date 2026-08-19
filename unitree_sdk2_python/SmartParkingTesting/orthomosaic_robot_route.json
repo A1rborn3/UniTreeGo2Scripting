@@ -1,42 +1,54 @@
 {
     "metadata": {
         "bounds": {
-            "min_x": -11.685813786579507,
-            "max_x": 12.117294145422353,
-            "min_y": -11.753239677115513,
-            "max_y": 11.940143549496257
+            "min_x": -11.685677986495673,
+            "max_x": 12.117806348300471,
+            "min_y": -11.754432294336134,
+            "max_y": 11.939850682200786
         },
         "resolution": 70.0
     },
     "nodes": [
         {
             "id": "manual_node_0",
-            "x": 0,
-            "y": 0,
+            "x": -0.257107,
+            "y": -0.088721,
             "type": "entrance_exit"
         },
         {
             "id": "manual_node_1",
-            "x": 2.0,
-            "y": 0,
+            "x": 4.214322,
+            "y": 0.125565,
             "type": "turn"
         },
         {
             "id": "manual_node_2",
-            "x": 2.0,
-            "y": 2.0,
+            "x": 3.871465,
+            "y": 4.782708,
             "type": "turn"
         },
         {
             "id": "manual_node_3",
-            "x": 0,
-            "y": 2.0,
+            "x": 8.742893,
+            "y": 5.082708,
             "type": "turn"
         },
         {
             "id": "manual_node_4",
-            "x": 0,
-            "y": 0,
+            "x": 8.828608,
+            "y": 2.782708,
+            "type": "turn"
+        },
+        {
+            "id": "manual_node_5",
+            "x": -0.471392,
+            "y": 2.568422,
+            "type": "turn"
+        },
+        {
+            "id": "manual_node_6",
+            "x": -0.214249,
+            "y": -0.045864,
             "type": "waypoint"
         }
     ],
@@ -60,6 +72,16 @@
             "id": "manual_edge_3",
             "from_id": "manual_node_3",
             "to_id": "manual_node_4"
+        },
+        {
+            "id": "manual_edge_4",
+            "from_id": "manual_node_4",
+            "to_id": "manual_node_5"
+        },
+        {
+            "id": "manual_edge_5",
+            "from_id": "manual_node_5",
+            "to_id": "manual_node_6"
         }
     ]
 }

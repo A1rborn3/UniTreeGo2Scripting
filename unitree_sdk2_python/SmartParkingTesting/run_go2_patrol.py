@@ -405,8 +405,7 @@ def run_patrol_simulation(waypoints_data, speed_factor=1.0):
 
 def main():
     parser = argparse.ArgumentParser(description="Unitree Go2 Waypoint Patrol Controller")
-    #default_json = os.path.join(os.path.dirname(__file__), "orthomosaic_go2_waypoints.json")
-    default_json = os.path.join(os.path.dirname(__file__), "orthomosaic_graph.json")
+    default_json = os.path.join(os.path.dirname(__file__), "orthomosaic_robot_route.json")
     parser.add_argument("--waypoints", type=str, default=default_json, help="Path to waypoints JSON file")
     parser.add_argument("--net", type=str, default="eth0", help="Network interface for Unitree SDK 2")
     parser.add_argument("--dry-run", action="store_true", help="Run in simulation mode (offline mock execution)")
