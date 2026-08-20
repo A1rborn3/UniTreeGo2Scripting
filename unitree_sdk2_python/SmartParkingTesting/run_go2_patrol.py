@@ -66,7 +66,7 @@ YAW_TOLERANCE_DEG = 8.0          # how close counts as "facing" the target yaw
 MAX_LINEAR_SPEED = 1.0           # m/s safety cap, overrides waypoint speed if higher
 MAX_YAW_RATE = 1.0               # rad/s cap for turning
 CONTROL_HZ = 20.0                # control loop rate
-HEADING_KP = 2.0                 # proportional gain: rad/s per rad of heading error
+HEADING_KP = 1.5                 # proportional gain: rad/s per rad of heading error
 TURN_IN_PLACE_THRESHOLD_DEG = 30 # if heading error exceeds this, stop and turn first
 
 
@@ -105,15 +105,16 @@ def normalize_waypoints(data):
         yaw_deg = node.get("yaw_deg")
         if yaw_deg is None:
             yaw_deg = node.get("yaw")
-        if yaw_deg is None:
-            yaw_deg = 0.0
 
         yaw_rad = node.get("yaw_rad")
         if yaw_rad is None:
             try:
-                yaw_rad = math.radians(float(yaw_deg))
+                if yaw_deg is None:
+                    yaw_rad = None
+                else:
+                    yaw_rad = math.radians(float(yaw_deg))
             except (TypeError, ValueError):
-                yaw_rad = 0.0
+                yaw_rad = None
 
         wp = {
             "seq": idx,
@@ -122,8 +123,8 @@ def normalize_waypoints(data):
             "x": x,
             "y": y,
             "z": node.get("z", 0.0),
-            "yaw_deg": float(yaw_deg),
-            "yaw_rad": float(yaw_rad),
+            "yaw_deg": (float(yaw_deg) if yaw_deg is not None else None),
+            "yaw_rad": (float(yaw_rad) if yaw_rad is not None else None),
             "target_speed_m_s": node.get("target_speed_m_s", 0.8),
             "tolerance_m": node.get("tolerance_m", 0.3),
             "wait_time_sec": node.get("wait_time_sec", 0.5),
@@ -177,17 +178,7 @@ class Go2PatrolController:
         self.obstacle_client.Init()
         self.obstacle_avoidance_enabled = False  # actually enabled later, once standing
 
-        # Raw pose feedback from DDS
-        self.raw_pose_x = 0.0
-        self.raw_pose_y = 0.0
-        self.raw_pose_yaw = 0.0
-
-        # Initial origin snapshot for zeroing (Option B: full 2D position + heading transform)
-        self.origin_x = None
-        self.origin_y = None
-        self.origin_yaw = None
-
-        # Transformed pose relative to start origin (0, 0, 0 rad)
+        # Robot pose, updated by the state subscriber callback.
         self.pose_x = 0.0
         self.pose_y = 0.0
         self.pose_yaw = 0.0  # radians
@@ -206,34 +197,12 @@ class Go2PatrolController:
             print("Warning: no pose feedback received yet; navigation will be unreliable "
                   "until state messages arrive.")
 
-    def reset_origin(self):
-        """Reset origin snapshot so the next incoming state message defines (0,0) and 0 deg yaw."""
-        self.origin_x = None
-        self.origin_y = None
-        self.origin_yaw = None
-
     def _on_state(self, msg):
-        self.raw_pose_x = msg.position[0]
-        self.raw_pose_y = msg.position[1]
-        self.raw_pose_yaw = msg.imu_state.rpy[2]
-
-        if self.origin_x is None:
-            self.origin_x = self.raw_pose_x
-            self.origin_y = self.raw_pose_y
-            self.origin_yaw = self.raw_pose_yaw
-            print(f"Captured initial zero origin: raw (x={self.origin_x:.3f}, "
-                  f"y={self.origin_y:.3f}, yaw={math.degrees(self.origin_yaw):.1f}°)")
-
-        dx = self.raw_pose_x - self.origin_x
-        dy = self.raw_pose_y - self.origin_y
-
-        # Option B: Full 2D transformation (rotate offset into initial robot heading frame)
-        cos_h = math.cos(-self.origin_yaw)
-        sin_h = math.sin(-self.origin_yaw)
-
-        self.pose_x = dx * cos_h - dy * sin_h
-        self.pose_y = dx * sin_h + dy * cos_h
-        self.pose_yaw = angle_diff_rad(self.raw_pose_yaw, self.origin_yaw)
+        # Field names depend on SDK version — check SportModeState_ definition.
+        # Typically something like msg.position = [x, y, z], msg.imu_state.rpy = [r,p,y]
+        self.pose_x = msg.position[0]
+        self.pose_y = msg.position[1]
+        self.pose_yaw = msg.imu_state.rpy[2]
         self._pose_lock_ready = True
 
     def enable_obstacle_avoidance(self):
@@ -356,8 +325,12 @@ class Go2PatrolController:
                 self.stand_up()
 
             for wp in waypoints:
+                # Avoid formatting None (which raises TypeError); display 0.0 when
+                # waypoint yaw is unspecified.
+                _yaw_val = wp.get('yaw_deg')
+                _yaw_disp = 0.0 if _yaw_val is None else _yaw_val
                 print(f"Navigating to Node {wp['id']} "
-                    f"({wp['x']:.2f}, {wp['y']:.2f}, yaw={wp.get('yaw_deg', 0):.1f}°)...")
+                    f"({wp['x']:.2f}, {wp['y']:.2f}, yaw={_yaw_disp:.1f}°)...")
                 ok = self.navigate_to_waypoint(wp)
                 if not ok:
                     return  # kill switch was hit
@@ -400,7 +373,9 @@ def run_patrol_simulation(waypoints_data, speed_factor=1.0):
     for wp in waypoints:
         target_x = wp["x"]
         target_y = wp["y"]
-        target_yaw = wp["yaw_deg"]
+        target_yaw = wp.get("yaw_deg")
+        if target_yaw is None:
+            target_yaw = 0.0
         dist = math.hypot(target_x - curr_x, target_y - curr_y)
         speed = wp.get("target_speed_m_s", 0.8) * speed_factor
         travel_time = dist / speed if speed > 0 else 0
@@ -430,8 +405,7 @@ def run_patrol_simulation(waypoints_data, speed_factor=1.0):
 
 def main():
     parser = argparse.ArgumentParser(description="Unitree Go2 Waypoint Patrol Controller")
-    #default_json = os.path.join(os.path.dirname(__file__), "orthomosaic_go2_waypoints.json")
-    default_json = os.path.join(os.path.dirname(__file__), "orthomosaic_graph.json")
+    default_json = os.path.join(os.path.dirname(__file__), "orthomosaic_robot_route.json")
     parser.add_argument("--waypoints", type=str, default=default_json, help="Path to waypoints JSON file")
     parser.add_argument("--net", type=str, default="eth0", help="Network interface for Unitree SDK 2")
     parser.add_argument("--dry-run", action="store_true", help="Run in simulation mode (offline mock execution)")
