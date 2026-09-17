@@ -371,6 +371,9 @@ def run_patrol_simulation(waypoints_data, speed_factor=1.0):
     curr_x, curr_y = 0.0, 0.0
 
     for wp in waypoints:
+        wp["x"] = wp["x"] - 5.1704
+        wp["y"] = wp["y"] + 1.2248
+        print("x is",wp["x"],"y is",wp["y"])
         target_x = wp["x"]
         target_y = wp["y"]
         target_yaw = wp.get("yaw_deg")
